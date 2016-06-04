@@ -15,7 +15,7 @@ arXiv preprint arXiv:1511.02680, 2015.
 arXiv preprint arXiv:1511.00561, 2015. 
 Vijay Badrinarayanan, Alex Kendall and Roberto Cipolla
 ```
-[http://arxiv.org/abs/1511.00561](http://arxiv.org/abs/1511.00561
+[http://arxiv.org/abs/1511.00561](http://arxiv.org/abs/1511.00561)
 
 ## Data
 
@@ -77,7 +77,14 @@ where the HDF5 data files are stored.
 
 To fit the model use the command:
 ```
-python segnet_neon.py 
+python segnet_neon.py -s <path to save checkpoints> -e 15 --serialize 1 -r 1
+```
+This will output a pickle file called `outputs.pkl` with the segmentation predictions from the trained
+model on the test and validation sets.  To view the images:
+
+To benchmark the model use the command:
+```
+python segnet_neon.py --bench
 ```
 
 ### Limitations
