@@ -1,8 +1,21 @@
 
 This repo contains an implementation of the SegNet model using neon.
 
-Ref:
+See the following references for more information:
 
+```
+"Bayesian SegNet: Model Uncertainty in Deep Convolutional Encoder-Decoder Architectures for Scene Understanding."
+Alex Kendall, Vijay Badrinarayanan and Roberto Cipolla
+arXiv preprint arXiv:1511.02680, 2015.
+```
+[http://arxiv.org/abs/1511.02680](http://arxiv.org/abs/1511.02680)
+
+```
+"SegNet: A Deep Convolutional Encoder-Decoder Architecture for Image Segmentation."
+arXiv preprint arXiv:1511.00561, 2015. 
+Vijay Badrinarayanan, Alex Kendall and Roberto Cipolla
+```
+[http://arxiv.org/abs/1511.00561](http://arxiv.org/abs/1511.00561
 
 ## Data
 
