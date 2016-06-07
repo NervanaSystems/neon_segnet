@@ -113,9 +113,12 @@ class Upsampling(Layer):
 
     def fprop(self, inputs, inference=False, beta=0.0):
         self.inputs = inputs
-        self.be.bprop_pool(self.nglayer, inputs, self.outputs, self.argmax, alpha=1., beta=0.0)
+        #self.be.bprop_pool(self.nglayer, inputs, self.outputs, self.argmax, alpha=1., beta=0.0)
+        self.be.fprop_upsample(self.nglayer, inputs, self.outputs, self.argmax)
+
         return self.outputs
 
     def bprop(self, error, alpha=1.0, beta=0.0):
-        self.be.fprop_pool(self.nglayer, error, self.deltas, self.argmax, beta=beta)
+        #self.be.fprop_pool(self.nglayer, error, self.deltas, self.argmax, beta=beta)
+        self.be.bprop_upsample(self.nglayer, error, self.deltas, self.argmax)
         return self.deltas

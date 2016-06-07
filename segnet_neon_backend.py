@@ -214,14 +214,16 @@ class NervanaGPU_Upsample(NervanaGPU):
                                pad_d=pad_d, pad_h=pad_h, pad_w=pad_w,
                                str_d=str_d, str_h=str_h, str_w=str_w)
 
-    def _execute_pool(self, layer, I, O, argmax, alpha, beta, kernel_args, shared, repeat):
-        if type(layer) is not UpsamplingLayer:
-            super(NervanaGPU_Upsample, self)._execute_pool(layer, I, O, argmax,
-                                                           alpha, beta, kernel_args,
-                                                           shared, repeat)
-            return
+    def fprop_upsample(self, layer, I, O, argmax):
+        # upsampling fprop is same as max pooling bprop
+        self.be.bprop_pool(layer, I, O, argmax, alpha=1.0, beta=0.0)
 
+    def bprop_upsample(self, layer, I, O, argmax):
         assert I.dtype == O.dtype
+
+        alpha = 1.0
+        beta = 0.0
+
         A_data = argmax.gpudata if argmax is not None else 0
         kernel = _get_bprop_upsampling(layer.dtype.str[1:], self.compute_capability)
         flags = 0
@@ -229,5 +231,4 @@ class NervanaGPU_Upsample(NervanaGPU):
                   I.gpudata, O.gpudata, A_data, alpha, beta, flags]
         params.extend(kernel_args[3])
 
-        for r in range(repeat):
-            kernel.prepared_async_call(*params, shared_size=shared)
+        kernel.prepared_async_call(*params, shared_size=shared)
