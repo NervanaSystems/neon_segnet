@@ -12,7 +12,6 @@ import h5py
 
 np.random.seed(1)
 
-
 pth_to_camvid = 'SegNet-Tutorial/CamVid'
 
 pth_to_camvid = os.path.abspath(pth_to_camvid)
@@ -46,39 +45,44 @@ for settype in ['train', 'val', 'test']:
         fn = fns[inds[cnt]]
         fid2.write(fn + '\n')
 
-        # load the image
+        # load the image (shape is [H, W, C]
         im = imread(fn)
         fn_annot = os.path.join(pth_to_camvid, settype + 'annot', os.path.basename(fn))
         im_annot = imread(fn_annot)
 
-        # resize images to 256x512
+        # resize images to 256 x 512
         im = imresize(im, new_shape[1:3])
         im = im.transpose((2,0,1))
 
         im_annot = imresize(im_annot, new_shape_annot[1:3], interp='nearest')
 
         # map the im_annot to channel
+        im_annot_out[:] = 0
         for h in range(new_shape_annot[1]):
             for w in range(new_shape_annot[2]):
                 chan_ind = int(im_annot[h, w])
                 im_annot_out[chan_ind, h, w] = 1.0
 
-        if settype == 'train':
-            mns += np.mean(np.mean(im, axis=2), axis=1)
-
         # Nimages x (flattened shape)
         imgs[cnt, :] = im.flatten()
         imgs_annot[cnt, :] = im_annot_out.flatten()
 
+    # quick check 
+    annot_test = imgs_annot.reshape((cnt+1, new_shape_annot[0], -1))
+    uvals = np.unique(np.sum(annot_test, axis=1))
+    assert len(uvals) == 1
+    assert uvals[0] == 1.0
     fid2.close()
 
     # calculate the mean pixel vals for each channel
     # for the training set
     if settype == 'train':
-        mns /= float(cnt)
-        mns_array = np.zeros(new_shape).transpose((1,2,0))
-        mns_array[:] = mns
-        mns_array = mns_array.transpose((2,0,1)).flatten().copy()
+        mnview = imgs.reshape((imgs.shape[0], C, -1))
+        mns = np.mean(np.mean(mnview, axis=2), axis=0)
+        mns_array = np.zeros(new_shape)
+        for c in range(C):
+            mns_array[c, :, :] = mns[c]
+        mns_array = mns_array.flatten().copy()
 
     imgs = imgs - mns_array
 

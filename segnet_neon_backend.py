@@ -216,10 +216,20 @@ class NervanaGPU_Upsample(NervanaGPU):
 
     def fprop_upsample(self, layer, I, O, argmax):
         # upsampling fprop is same as max pooling bprop
-        self.be.bprop_pool(layer, I, O, argmax, alpha=1.0, beta=0.0)
+        self.bprop_pool(layer, I, O, argmax, alpha=1.0, beta=0.0)
 
     def bprop_upsample(self, layer, I, O, argmax):
         assert I.dtype == O.dtype
+        assert layer.sizeI == I.size
+        assert layer.sizeO == O.size
+        assert argmax is not None
+        assert layer.sizeO == argmax.size
+        assert I.dtype == O.dtype
+
+        # using same args as fprop_pool except the kernel name
+        # which is "bprop_upsampling"
+        kernel_args = layer.fprop_kernel
+        shared = layer.fprop_lut_size
 
         alpha = 1.0
         beta = 0.0
