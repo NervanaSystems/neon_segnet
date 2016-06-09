@@ -97,7 +97,6 @@ for ind in range(5):
     pool_layers.append(layers[-1])
     if ind >= 2:
         layers.append(Dropout(keep=0.5, name='drop%d' % (ind+1)))
-        #layers.append(Dropout(keep=1.0, name='drop%d' % (ind+1)))
 
 # this loop generates the decoder layers
 for ind in range(4,-1,-1):
@@ -116,7 +115,6 @@ for ind in range(4,-1,-1):
             break
     if ind >= 2:
         layers.append(Dropout(keep=0.5, name='drop%d' % (ind+1)))
-        #layers.append(Dropout(keep=1.0, name='drop%d' % (ind+1)))
 
 # last conv layer outputs 12 channels, 1 for each output class
 # with a pixelwise softmax over the channels
@@ -135,6 +133,7 @@ segnet_model = Model(layers=layers)
 callbacks = Callbacks(segnet_model, **args.callback_args)
 
 if args.bench:
+    segnet_model.initialize(train_set.lshape, cost=cost)
     print segnet_model
     segnet_model.benchmark(train_set, cost=cost, optimizer=opt)
     sys.exit(0)

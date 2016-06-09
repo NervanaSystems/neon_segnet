@@ -77,10 +77,21 @@ where the HDF5 data files are stored.
 
 To fit the model use the command:
 ```
-python segnet_neon.py -s <path to save checkpoints> -e 15 --serialize 1 -r 1
+python segnet_neon.py -s <path to save checkpoints> -e 800 --serialize 10 -H 60 -r 1 -vvv
 ```
-This will output a pickle file called `outputs.pkl` with the segmentation predictions from the trained
-model on the test and validation sets.  To view the images:
+This will output a pickle file called `outputs.pkl` with the segmentation predictions
+from the trained model on the test and validation sets.  The model state will be saved
+every 10 epochs and 60 previous states will be retained.  The model will fit for 800
+epochs.
+
+After fitting, the `segnet_neon.py` script will run inference on the images in the test and 
+validation sets and save the results to a pickle file named `outputs.pkl`.  The script in
+[./check_outputs.py] shows how to view these results.  Also the script [./inference_example.py]
+shows how to load the trained weights into neon and run inference on a PNG image file.  To
+run this script you will need to give it the path to the SegNet serialized weight file and
+the path to an image file.  Note that currently the model layers need to be regenerated to
+load the trained weights, the model can not be deserialized directly from the serialized file
+for this model.
 
 To benchmark the model use the command:
 ```
