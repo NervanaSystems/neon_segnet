@@ -101,10 +101,19 @@ the cross entropy of over the validation set will be printed.
 
 After fitting, the `segnet_neon.py` script will run inference on the images in the test and 
 validation sets and save the results to a pickle file named `outputs.pkl`.  The script in
-[./check_outputs.py] shows how to view these results.  Also the script [./inference_example.py]
-shows how to load the trained weights into neon and run inference on a PNG image file.  To
-run this script you will need to give it the path to the SegNet serialized weight file and
-the path to an image file.  Note that currently the model layers need to be regenerated to
+[./check_outputs.py] shows how to view these results. The scripts generates the model,
+loads the weights from a saved checkpoint file and run inference on the test data set.
+It will display in a plot window the ground truth and segnet outputs for each image, one
+by one.  The terminal will display the pixel-wise accuracy percentage of the classification.
+To run the script requires the path to the CamVid data set (same as that used above in the
+fit command) and the path to a serialized segnet model file:
+```
+python check_outputs.py /usr/local/data/evren/CamVid/ run2/segnet_train_out_649.prm 
+```
+
+![example](./example_output.png)
+
+Note that currently the model layers need to be regenerated to
 load the trained weights, the model can not be deserialized directly from the serialized file
 for this model.
 
