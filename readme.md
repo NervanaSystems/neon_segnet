@@ -112,9 +112,10 @@ by one.  The terminal will display the pixel-wise accuracy percentage of the cla
 To run the script requires the path to the CamVid data set (same as that used above in the
 fit command) and the path to a serialized segnet model file:
 ```
-python check_outputs.py /usr/local/data/evren/CamVid/ run2/segnet_train_out_649.prm 
+python check_outputs.py /usr/local/data/evren/CamVid/ run2/segnet_train_out_649.prm outputs/
 ```
-
+PNG images will be saved to the outputs/ directory with the comparison between the segnets
+output and the ground truth.  For example:
 ![example](./example_output.png)
 
 Note that currently the model layers need to be regenerated to
