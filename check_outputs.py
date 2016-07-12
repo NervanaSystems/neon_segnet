@@ -93,8 +93,8 @@ im2 = None
 for x, t in test_set:
     z = segnet_model.fprop(x).get()
 
-    z = np.argmax(z.reshape((12, 256, 512)), axis=0)
-    t = np.argmax(t.get().reshape((12, 256, 512)), axis=0)
+    z = np.argmax(z.reshape((c, h, w)), axis=0)
+    t = np.argmax(t.get().reshape((c, h, w)), axis=0)
     plt.subplot(2,1,1);
     if im1 is None:
         im1 = plt.imshow(t);plt.title('Truth')
