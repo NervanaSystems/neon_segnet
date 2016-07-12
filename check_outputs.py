@@ -39,7 +39,18 @@ parser = argparse.ArgumentParser(description='compare output of trained model to
 parser.add_argument('image_path', type=str, help='path to the CamVid data set in the SegNet-Tutorial '
                                                  'GitHub repo')
 parser.add_argument('save_model_file', type=str, help='serialized model file')
+parser.add_argument("--num_classes", type=int, default=12, help="number of annotated classes")
+parser.add_argument("--height", type=int, default=256, help="image height")
+parser.add_argument("--width", type=int, default=512, help="image width")
 args = parser.parse_args()
+
+# check that image dimensions are powers of 2
+if((args.height & (args.height - 1)) != 0):
+    raise TypeError("Height must be a power of 2.")
+if((args.width & (args.width - 1)) != 0):
+    raise TypeError("Width must be a power of 2.")
+
+(c, h, w) = (args.num_classes, args.height, args.width)
 
 # need to use the backend with the new upsampling layer implementation
 be = NervanaGPU_Upsample(device_id=0)
@@ -50,12 +61,12 @@ be.bsz = 1
 # couple backend to global neon object
 NervanaObject.be = be
 
-shape = dict(channel_count=3, height=256, width=512, subtract_mean=False)
+shape = dict(channel_count=c, height=h, width=w, subtract_mean=False)
 test_params = ImageParams(center=True, flip=False,
-                          scale_min=256, scale_max=256,
+                          scale_min=min(h, w), scale_max=min(h, w),
                           aspect_ratio=0, **shape)
-common = dict(target_size=256*512, target_conversion='read_contents',
-              onehot=False, target_dtype=np.uint8, nclasses=12)
+common = dict(target_size=h*w, target_conversion='read_contents',
+              onehot=False, target_dtype=np.uint8, nclasses=c)
 data_dir = args.image_path
 
 test_set = PixelWiseImageLoader(set_name='test', repo_dir=data_dir,media_params=test_params, 

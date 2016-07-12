@@ -38,7 +38,7 @@ from pixelwise_dataloader import PixelWiseImageLoader
 global _get_bprop_upsampling
 
 
-def gen_model():
+def gen_model(num_channels, height, width):
     assert NervanaObject.be is not None, 'need to generate a backend before using this function'
 
     init_uni = Kaiming()
@@ -47,7 +47,7 @@ def gen_model():
     conv_common = dict(padding=1, init=init_uni, activation=Rectlin(), batch_norm=True)
 
     # set up the layers
-    layers=[]
+    layers = []
 
     # need to store a ref to the pooling layers to pass
     # to the upsampling layers to get the argmax indicies
@@ -55,9 +55,8 @@ def gen_model():
     pool_layers = []
 
     # first loop generates the encoder layers
-    nchan = [64, 128, 256]
-    nchan.extend([512]*2)
-    for ind in range(5):
+    nchan = [64, 128, 256, 512, 512]
+    for ind in range(len(nchan)):
         nchanu = nchan[ind]
         lrng = 2 if ind <= 1 else 3
         for lind in range(lrng):
@@ -70,7 +69,7 @@ def gen_model():
             layers.append(Dropout(keep=0.5, name='drop%d' % (ind+1)))
 
     # this loop generates the decoder layers
-    for ind in range(4,-1,-1):
+    for ind in range(len(nchan)-1,-1,-1):
         nchanu = nchan[ind]
         lrng = 2 if ind <= 1 else 3
         # upsampling layers need a ref to the corresponding pooling layer
@@ -89,10 +88,9 @@ def gen_model():
 
     # last conv layer outputs 12 channels, 1 for each output class
     # with a pixelwise softmax over the channels
-    c, h, w = (12, 256, 512)
-    act_last = PixelwiseSoftmax(c, h, w, name="PixelwiseSoftmax")
+    act_last = PixelwiseSoftmax(num_channels, height, width, name="PixelwiseSoftmax")
     conv_last = dict(padding=1, init=init_uni, activation=act_last, batch_norm=False)
-    layers.append(Conv((3, 3, c), strides=1, name='deconv_out', **conv_last))
+    layers.append(Conv((3, 3, num_channels), strides=1, name='deconv_out', **conv_last))
     return layers
 
 
@@ -100,7 +98,19 @@ def main():
     # larger batch sizes may not fit on GPU
     parser = NeonArgparser(__doc__, default_overrides={'batch_size': 4})
     parser.add_argument("--bench", action="store_true", help="run benchmark instead of training")
+    parser.add_argument("--num_classes", type=int, default=12, help="number of classes in the annotation")
+    parser.add_argument("--height", type=int, default=256, help="image height")
+    parser.add_argument("--width", type=int, default=512, help="image width")
+
     args = parser.parse_args(gen_be=False)
+
+    # check that image dimensions are powers of 2
+    if((args.height & (args.height - 1)) != 0):
+        raise TypeError("Height must be a power of 2.")
+    if((args.width & (args.width - 1)) != 0):
+        raise TypeError("Width must be a power of 2.")
+
+    (c, h, w) = (args.num_classes, args.height, args.width)
 
     # need to use the backend with the new upsampling layer implementation
     be = NervanaGPU_Upsample(rng_seed=args.rng_seed,
@@ -111,15 +121,15 @@ def main():
     # couple backend to global neon object
     NervanaObject.be = be
 
-    shape = dict(channel_count=3, height=256, width=512, subtract_mean=False)
+    shape = dict(channel_count=3, height=h, width=w, subtract_mean=False)
     train_params = ImageParams(center=True, flip=False,
-                               scale_min=256, scale_max=256,
+                               scale_min=min(h, w), scale_max=min(h, w),
                                aspect_ratio=0, **shape)
     test_params = ImageParams(center=True, flip=False,
-                              scale_min=256, scale_max=256,
+                              scale_min=min(h, w), scale_max=min(h, w),
                               aspect_ratio=0, **shape)
-    common = dict(target_size=256*512, target_conversion='read_contents',
-                  onehot=False, target_dtype=np.uint8, nclasses=12)
+    common = dict(target_size=h*w, target_conversion='read_contents',
+                  onehot=False, target_dtype=np.uint8, nclasses=args.num_classes)
 
     train_set = PixelWiseImageLoader(set_name='train', repo_dir=args.data_dir,
                                       media_params=train_params,
@@ -130,7 +140,7 @@ def main():
                       index_file=os.path.join(args.data_dir, 'val_images.csv'), **common)
 
     # initialize model object
-    layers = gen_model()
+    layers = gen_model(c, h, w)
     segnet_model = Model(layers=layers)
 
     # configure callbacks
