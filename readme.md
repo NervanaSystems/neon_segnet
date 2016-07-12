@@ -39,7 +39,7 @@ pip install-r requirements.txt
 ## Data
 
 Before running this model the data needs to be downloaded and converted into a format that
-neon can use.  
+neon can use. 
 
 ### Downloading the dataset
 
@@ -63,11 +63,12 @@ was cloned and the output path to place the neon compatible PNG files.  For exam
 python proc_images.py /path/to/SegNet-Tutorial/CamVid/ /local/dir/CamVid_neon/
 ```
 
-The output dir will contain the directories train, test and val with the input training,
+The output dir will contain the directories `train`, `test` and `val` with the input training,
 testing and validation image sets, repectively.  Also, for each set there will be a
 corresponding directory with 'annot' added to the basename holding the annotation
-images.  The annotation images and grayscale PNG files where each pixel holds an interger
-from 0 to 12.  The pixcel value indicates the ground truth output class of that pixel.
+images (e.g. `trainannot`, `testannot`, and `valannot`).  The annotation images are grayscale 
+PNG files where each pixel holds an integer from 0 to 12.  The pixel value indicates the ground 
+truth output class of that pixel.
 
 ### SegNet implementation
 
@@ -75,7 +76,7 @@ The "segnet_neon.py" script is the main script to run SegNet using neon.
 The model includes a pixelwise softmax layer and the upsampling layer
 that is not included with the current neon release.  Also, a special data loader
 class is included which converts the 1 channel target class images holding
-the groudn truth values for each pixel into a 12 channel image using a one-hot
+the ground truth values for each pixel into a 12 channel image using a one-hot
 representation for the class of each pixel.  This is required for the logistic
 regression using neon.
 
@@ -99,6 +100,9 @@ function over ever pixel.  These values can be large since they are not normaliz
 or averaged over the number of pxiels in the image.  Also, at the end of every epoch,
 the cross entropy of over the validation set will be printed.
 
+After 650 epochs of training, the network should reach ~9000 training cost and ~80% pixel
+classification accuracy.
+
 After fitting, the `segnet_neon.py` script will run inference on the images in the test and 
 validation sets and save the results to a pickle file named `outputs.pkl`.  The script in
 [./check_outputs.py] shows how to view these results. The scripts generates the model,
@@ -117,6 +121,34 @@ Note that currently the model layers need to be regenerated to
 load the trained weights, the model can not be deserialized directly from the serialized file
 for this model.
 
+### Custom data
+
+We recommend users first run the model with the CamVid dataset to check that the model is
+set up correctly. To place in the root directory several index files in CSV format:
+`test_images.csv`, `train_images.csv`, and `val_images.csv`. Each CSV file contains a 
+header line, and each subsequent row contains a pair of input and annotation images. For example:
+
+```
+image, labels
+/usr/local/data/test/0001.png,/usr/local/data/testannot/0001_annot.png
+/usr/local/data/test/0002.png,/usr/local/data/testannot/0002_annot.png
+/usr/local/data/test/0003.png,/usr/local/data/testannot/0003_annot.png
+/usr/local/data/test/0004.png,/usr/local/data/testannot/0004_annot.png
+/usr/local/data/test/0005.png,/usr/local/data/testannot/0005_annot.png
+```
+
+Ensure that:
+* All image sizes are powers of 2 (e.g. 256 x 512).
+* The annotation images are grayscale, where each pixel contains an integer from 0 to NUM_CLASSES
+* If using images larger than 256 x 512, try adjusting the batch size to reduce memory consumption.
+
+Use the following command line arguments to customize SegNet to your problem:
+* `--num_classes`: Number of classes in your annotation image (default: 12)
+* `--height`: Height of the input images
+* `--width`: Width of the input images
+
+Note that the hyperparameters of the model (learning rate, number of channels, depth) are not
+optimized and should be tuned to reach maximal performance on your dataset.
 
 ### Benchmarks
 
