@@ -148,29 +148,17 @@ def main():
     # couple backend to global neon object
     NervanaObject.be = be
 
-#    shape = dict(channel_count=3, height=h, width=w, subtract_mean=False)
-#    train_params = ImageParams(center=True, flip=False,
-#                               scale_min=min(h, w), scale_max=min(h, w),
-#                               aspect_ratio=0, **shape)
-#    test_params = ImageParams(center=True, flip=False,
-#                              scale_min=min(h, w), scale_max=min(h, w),
-#                              aspect_ratio=0, **shape)
-#    common = dict(target_size=h*w, target_conversion='read_contents',
-#                  onehot=False, target_dtype=np.uint8, nclasses=args.num_classes)
-
-#    train_set = PixelWiseImageLoader(set_name='train', repo_dir=args.data_dir,
-#                                      media_params=train_params,
-#                                      shuffle=False, subset_percent=100,
-#                                      index_file=os.path.join(args.data_dir, 'train_images.csv'),
-#                                      **common)
-#    val_set = PixelWiseImageLoader(set_name='val', repo_dir=args.data_dir,media_params=test_params,
-#                      index_file=os.path.join(args.data_dir, 'val_images.csv'), **common)
-
     train_manifest = os.path.join(args.data_dir, 'train_images.csv')
     val_manifest = os.path.join(args.data_dir, 'val_images.csv')
 
-    train_set = transformers(DataLoader(make_aeon_config(train_manifest, h, w, be.bsz), be), c)
-    val_set = transformers(DataLoader(make_aeon_config(val_manifest, h, w, be.bsz), be), c)
+    train_config = make_aeon_config(train_manifest, h, w, be.bsz)
+    val_config = make_aeon_config(val_manifest, h, w, be.bsz)
+
+    train_dataloader = DataLoader(train_config, be)
+    val_dataloader = DataLoader(val_config, be)
+
+    train_set = transformers(train_dataloader, c)
+    val_set = transformers(val_dataloader, c)
 
     # initialize model object
     layers = gen_model(c, h, w)
