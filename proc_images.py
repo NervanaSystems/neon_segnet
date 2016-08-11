@@ -1,12 +1,12 @@
 """
 Script to generate the CSV files from the the CamVid data set
-which are used by the neon dataloader to load the images and 
+which are used by the neon dataloader to load the images and
 annotations into the neon model.
 
 Arguments:
     image_path (str): path to the CamVid data set found in the SegNet-Tutorial
                       GitHub repo (https://github.com/alexgkendall/SegNet-Tutorial)
-                      this path should have the directories: 'train', 'trainannot', 
+                      this path should have the directories: 'train', 'trainannot',
                       'val', 'valannot', 'test', 'testannot'
     output_path (str): path to place the image files to be used by neon, it is best
                        to use a path on the local drive instead of a network mouonted drive
@@ -37,7 +37,6 @@ def main():
 
         fid = open(os.path.join(args.output_path, '%s_images.csv' % dataset), 'w')
         # print header
-        fid.write('image,labels\n')
         fns = glob(os.path.join(args.image_path, dataset, '*.png'))
 
         for fn in fns:

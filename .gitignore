@@ -1,2 +1,10 @@
 *.pyc
 *.h5
+.DS_Store
+@eaDir/
+*.pkl
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes

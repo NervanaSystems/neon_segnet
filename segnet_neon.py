@@ -22,7 +22,6 @@ import numpy as np
 
 from neon import NervanaObject
 from neon.callbacks.callbacks import Callbacks
-from neon.data import ImageParams
 from neon.initializers import  Kaiming
 from neon.layers import Conv, GeneralizedCost, Dropout, Pooling
 from neon.models import Model
@@ -34,7 +33,8 @@ from pixelwise_sm import PixelwiseSoftmax
 from segnet_neon_backend import NervanaGPU_Upsample
 from upsampling_layer import Upsampling
 from segnet_neon_backend import _get_bprop_upsampling
-from pixelwise_dataloader import PixelWiseImageLoader
+from aeon import DataLoader
+from neon.data.dataloader_transformers import PixelWiseOneHot, TypeCast
 global _get_bprop_upsampling
 
 
@@ -93,6 +93,33 @@ def gen_model(num_channels, height, width):
     layers.append(Conv((3, 3, num_channels), strides=1, name='deconv_out', **conv_last))
     return layers
 
+def make_aeon_config(manifest_filename, h, w, minibatch_size):
+    image_decode_cfg = dict(
+        height=h, width=w,
+        center=True)				# whether to do random crops
+
+    pixelwise_decode_cfg = dict(
+        height=h, width=w,
+        center=True,
+        channels=1)                # whether to do random crops
+
+    return dict(
+        manifest_filename=manifest_filename,
+        minibatch_size=minibatch_size,
+        macrobatch_size=5000,
+        # cache_directory=get_data_cache_dir('/usr/local/data', subdir='segnet_cache'),
+#        subset_fraction=float(subset_pct/100.0),
+#        shuffle_manifest=do_randomize,
+#        shuffle_every_epoch=do_randomize,
+        type='image,pixelmask',
+        pixelmask=pixelwise_decode_cfg,
+        image=image_decode_cfg)
+
+def transformers(dl, num_classes):
+    dl = TypeCast(dl, index=1, dtype=np.int32)
+    dl = TypeCast(dl, index=0, dtype=np.float32)
+    dl = PixelWiseOneHot(dl, nclasses=num_classes, index=1)
+    return dl
 
 def main():
     # larger batch sizes may not fit on GPU
@@ -121,23 +148,29 @@ def main():
     # couple backend to global neon object
     NervanaObject.be = be
 
-    shape = dict(channel_count=3, height=h, width=w, subtract_mean=False)
-    train_params = ImageParams(center=True, flip=False,
-                               scale_min=min(h, w), scale_max=min(h, w),
-                               aspect_ratio=0, **shape)
-    test_params = ImageParams(center=True, flip=False,
-                              scale_min=min(h, w), scale_max=min(h, w),
-                              aspect_ratio=0, **shape)
-    common = dict(target_size=h*w, target_conversion='read_contents',
-                  onehot=False, target_dtype=np.uint8, nclasses=args.num_classes)
+#    shape = dict(channel_count=3, height=h, width=w, subtract_mean=False)
+#    train_params = ImageParams(center=True, flip=False,
+#                               scale_min=min(h, w), scale_max=min(h, w),
+#                               aspect_ratio=0, **shape)
+#    test_params = ImageParams(center=True, flip=False,
+#                              scale_min=min(h, w), scale_max=min(h, w),
+#                              aspect_ratio=0, **shape)
+#    common = dict(target_size=h*w, target_conversion='read_contents',
+#                  onehot=False, target_dtype=np.uint8, nclasses=args.num_classes)
 
-    train_set = PixelWiseImageLoader(set_name='train', repo_dir=args.data_dir,
-                                      media_params=train_params,
-                                      shuffle=False, subset_percent=100,
-                                      index_file=os.path.join(args.data_dir, 'train_images.csv'),
-                                      **common)
-    val_set = PixelWiseImageLoader(set_name='val', repo_dir=args.data_dir,media_params=test_params, 
-                      index_file=os.path.join(args.data_dir, 'val_images.csv'), **common)
+#    train_set = PixelWiseImageLoader(set_name='train', repo_dir=args.data_dir,
+#                                      media_params=train_params,
+#                                      shuffle=False, subset_percent=100,
+#                                      index_file=os.path.join(args.data_dir, 'train_images.csv'),
+#                                      **common)
+#    val_set = PixelWiseImageLoader(set_name='val', repo_dir=args.data_dir,media_params=test_params,
+#                      index_file=os.path.join(args.data_dir, 'val_images.csv'), **common)
+
+    train_manifest = os.path.join(args.data_dir, 'train_images.csv')
+    val_manifest = os.path.join(args.data_dir, 'val_images.csv')
+
+    train_set = transformers(DataLoader(make_aeon_config(train_manifest, h, w, be.bsz), be), c)
+    val_set = transformers(DataLoader(make_aeon_config(val_manifest, h, w, be.bsz), be), c)
 
     # initialize model object
     layers = gen_model(c, h, w)
