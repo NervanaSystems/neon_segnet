@@ -35,6 +35,7 @@ from segnet_neon_backend import NervanaGPU_Upsample
 from upsampling_layer import Upsampling
 from segnet_neon_backend import _get_bprop_upsampling
 from pixelwise_dataloader import PixelWiseImageLoader
+from mask_iterator import MaskIterator
 global _get_bprop_upsampling
 
 
@@ -97,26 +98,20 @@ def gen_model(num_channels, height, width):
 def main():
     # larger batch sizes may not fit on GPU
     parser = NeonArgparser(__doc__, default_overrides={'batch_size': 4})
-    parser.add_argument("--bench", action="store_true", help="run benchmark instead of training")
-    parser.add_argument("--num_classes", type=int, default=12, help="number of classes in the annotation")
-    parser.add_argument("--height", type=int, default=256, help="image height")
-    parser.add_argument("--width", type=int, default=512, help="image width")
 
     args = parser.parse_args(gen_be=False)
 
-    # check that image dimensions are powers of 2
-    if((args.height & (args.height - 1)) != 0):
-        raise TypeError("Height must be a power of 2.")
-    if((args.width & (args.width - 1)) != 0):
-        raise TypeError("Width must be a power of 2.")
-
-    (c, h, w) = (args.num_classes, args.height, args.width)
+    (c, h, w) = (2, 256, 256)
 
     # need to use the backend with the new upsampling layer implementation
     be = NervanaGPU_Upsample(rng_seed=args.rng_seed,
                              device_id=args.device_id)
     # set batch size
     be.bsz = args.batch_size
+    args.data_dir = '/usr/local/data/I1K/macrobatches/'
+    args.num_classes = 2
+    args.height = 256
+    args.width = 256
 
     # couple backend to global neon object
     NervanaObject.be = be
@@ -129,19 +124,39 @@ def main():
                               scale_min=min(h, w), scale_max=min(h, w),
                               aspect_ratio=0, **shape)
     common = dict(target_size=h*w, target_conversion='read_contents',
-                  onehot=False, target_dtype=np.uint8, nclasses=args.num_classes)
+                  onehot=False, target_dtype=np.uint8, nclasses=c)
 
-    train_set = PixelWiseImageLoader(set_name='train', repo_dir=args.data_dir,
-                                      media_params=train_params,
-                                      shuffle=False, subset_percent=100,
-                                      index_file=os.path.join(args.data_dir, 'train_images.csv'),
-                                      **common)
-    val_set = PixelWiseImageLoader(set_name='val', repo_dir=args.data_dir,media_params=test_params, 
-                      index_file=os.path.join(args.data_dir, 'val_images.csv'), **common)
+    img_set_options = dict(repo_dir='/usr/local/data/I1K/macrobatches/',
+                           inner_size=args.height,
+                           subset_pct=20)
+
+    train_set = MaskIterator(10, 25, 2, set_name='train',
+                             scale_range=(256, 256), **img_set_options)
+    val_set = MaskIterator(10, 25, 2, set_name='validation',
+                           scale_range=(256, 256), do_transforms=False,
+                           **img_set_options)
 
     # initialize model object
     layers = gen_model(c, h, w)
     segnet_model = Model(layers=layers)
+    cost = GeneralizedCost(costfunc=CrossEntropyMulti())
+    segnet_model.initialize(train_set, cost=cost)
+    print segnet_model
+
+    from neon.util.persist import load_obj
+    from neon.util.modeldesc import ModelDescription
+    print 'loading weights...'
+    model_dict = load_obj('/home/users/evren/kaggle/driving/localization/VGG_D.p')
+    #model_dict = load_obj(args.model_file)
+    model_desc = ModelDescription(model_dict)
+
+    from copy import deepcopy
+    for ll in segnet_model.layers_to_optimize:
+        trained_layer = model_desc.getlayer(ll.name)
+        if trained_layer is not None:
+            print ll.name
+            layer_config = deepcopy(trained_layer)
+            ll.load_weights(layer_config)
 
     # configure callbacks
     callbacks = Callbacks(segnet_model, eval_set=val_set, **args.callback_args)
@@ -151,14 +166,9 @@ def main():
     opt_bn = GradientDescentMomentum(1.0e-6, 0.9, schedule=Schedule())
     opt = MultiOptimizer({'default': opt_gdm, 'Bias': opt_biases, 'BatchNorm': opt_bn})
 
-    cost = GeneralizedCost(costfunc=CrossEntropyMulti())
 
-    if args.bench:
-        segnet_model.initialize(train_set, cost=cost)
-        segnet_model.benchmark(train_set, cost=cost, optimizer=opt)
-        sys.exit(0)
-    else:
-        segnet_model.fit(train_set, optimizer=opt, num_epochs=args.epochs, cost=cost, callbacks=callbacks)
+    segnet_model.fit(train_set, optimizer=opt, num_epochs=args.epochs,
+                     cost=cost, callbacks=callbacks)
 
     # get the trained segnet model outputs for valisation set
     outs_val = segnet_model.get_outputs(val_set)
