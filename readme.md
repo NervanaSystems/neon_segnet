@@ -82,7 +82,7 @@ regression using neon.
 
 These layers and the data loader are defined in the files
 [upsampling_layer.py](./upsampling_layer.py),
-[pixelwise_dataloader.py]./pixelwise_dataloader.py()
+[pixelwise_dataloader.py](./pixelwise_dataloader.py)
 and [pixelwise_sm.py](./pixelwise_sm.py). Also the GPU kernels for the upsampling
 layer are included in the file [segnet_neon_backend.py](./segnet_neon_backend.py).
 
@@ -130,7 +130,6 @@ set up correctly. To place in the root directory several index files in CSV form
 header line, and each subsequent row contains a pair of input and annotation images. For example:
 
 ```
-image, labels
 /usr/local/data/test/0001.png,/usr/local/data/testannot/0001_annot.png
 /usr/local/data/test/0002.png,/usr/local/data/testannot/0002_annot.png
 /usr/local/data/test/0003.png,/usr/local/data/testannot/0003_annot.png
