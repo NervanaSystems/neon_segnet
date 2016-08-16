@@ -109,7 +109,13 @@ class Upsampling(Layer):
 
     def set_deltas(self, delta_buffers):
         super(Upsampling, self).set_deltas(delta_buffers)
-        self.argmax = self.pair_layer.argmax
+        if self.pair_layer is None:
+            self.argmax = self.be.iobuf(int(np.prod(self.in_shape)), dtype=np.uint8)
+            # will always be zero
+            self.argmax[:] = 0
+        else:
+            self.argmax = self.pair_layer.argmax
+
 
     def fprop(self, inputs, inference=False, beta=0.0):
         self.inputs = inputs
