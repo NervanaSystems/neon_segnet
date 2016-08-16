@@ -80,9 +80,8 @@ the ground truth values for each pixel into a 12 channel image using a one-hot
 representation for the class of each pixel.  This is required for the logistic
 regression using neon.
 
-These layers and the data loader are defined in the files
-[upsampling_layer.py](./upsampling_layer.py),
-[pixelwise_dataloader.py](./pixelwise_dataloader.py)
+These new components are defined in the files
+[upsampling_layer.py](./upsampling_layer.py)
 and [pixelwise_sm.py](./pixelwise_sm.py). Also the GPU kernels for the upsampling
 layer are included in the file [segnet_neon_backend.py](./segnet_neon_backend.py).
 
