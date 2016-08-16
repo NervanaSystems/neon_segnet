@@ -23,15 +23,15 @@ import numpy as np
 from neon import NervanaObject
 from neon.backends import gen_backend
 from neon.models import Model
-from neon.data import ImageParams
-from neon.models import Model
 from neon.util.persist import load_obj
 from neon.util.modeldesc import ModelDescription
 
 from segnet_neon_backend import NervanaGPU_Upsample
 from segnet_neon_backend import _get_bprop_upsampling
-from pixelwise_dataloader import PixelWiseImageLoader
 from segnet_neon import gen_model
+from segnet_neon import make_aeon_config, transformers
+from aeon import DataLoader
+
 global _get_bprop_upsampling
 
 parser = argparse.ArgumentParser(description='compare output of trained model to ground truth')
@@ -43,9 +43,9 @@ parser.add_argument("--num_classes", type=int, default=12, help="number of annot
 parser.add_argument("--height", type=int, default=256, help="image height")
 parser.add_argument("--width", type=int, default=512, help="image width")
 parser.add_argument("--display", action="store_true", help="output to screen instead of to file")
+parser.add_argument("--valset", action="store_true", help="Use the validation set instead of the test set")
 args = parser.parse_args()
 if not args.display:
-    print 'Will try to output to the display'
     import matplotlib
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -73,22 +73,17 @@ be.bsz = 1
 # couple backend to global neon object
 NervanaObject.be = be
 
-# input image parameters - channel_count is 3 for color images, 1 for B/W
-shape = dict(channel_count=3, height=h, width=w, subtract_mean=False)
-test_params = ImageParams(center=True, flip=False,
-                          scale_min=min(h, w), scale_max=min(h, w),
-                          aspect_ratio=0, **shape)
-common = dict(target_size=h*w, target_conversion='read_contents',
-              onehot=False, target_dtype=np.uint8, nclasses=c)
-data_dir = args.image_path
-
-test_set = PixelWiseImageLoader(set_name='test', repo_dir=data_dir,media_params=test_params, 
-                                index_file=os.path.join(data_dir, 'test_images.csv'), **common)
-
+if args.valset:
+    manifest = os.path.join(args.image_path, 'val_images.csv')
+else:
+    manifest = os.path.join(args.image_path, 'test_images.csv')
+dat_config = make_aeon_config(manifest, h, w, be.bsz)
+dataloader = DataLoader(dat_config, be)
+dataset = transformers(dataloader, c)
 
 # initialize model object
 segnet_model = Model(layers=gen_model(c, h, w))
-segnet_model.initialize(test_set)
+segnet_model.initialize(dataset)
 
 # load up the serialized model
 model_desc = ModelDescription(load_obj(args.save_model_file))
@@ -105,7 +100,7 @@ im1 = None
 im2 = None
 
 cnt = 1
-for x, t in test_set:
+for x, t in dataset:
     z = segnet_model.fprop(x).get()
 
     z = np.argmax(z.reshape((c, h, w)), axis=0)

@@ -151,6 +151,7 @@ def main():
     train_manifest = os.path.join(args.data_dir, 'train_images.csv')
     val_manifest = os.path.join(args.data_dir, 'val_images.csv')
 
+
     train_config = make_aeon_config(train_manifest, h, w, be.bsz)
     val_config = make_aeon_config(val_manifest, h, w, be.bsz)
 
